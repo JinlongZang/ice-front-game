@@ -1,0 +1,5 @@
+*-check*.png
+preview.png
+assets/*-source.png
+__pycache__/
+node_modules/

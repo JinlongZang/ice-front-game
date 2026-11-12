@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <script src="assets/boss-masks.js?v=20261112f" defer></script>
+  <script src="game.js?v=20261112f" defer></script>
+  <title>冰原防线</title>
+  <link rel="preload" as="image" href="assets/normal-zombie.png?v=20261112f" />
+  <link rel="preload" as="image" href="assets/frozen-weapon.png?v=20261112f" media="(min-width: 601px)" />
+  <link rel="preload" as="image" href="assets/frozen-weapon-mobile.png?v=20261112f" media="(max-width: 600px)" />
+  <link rel="preload" as="image" href="assets/soldier.png?v=20261112f" />
+  <link rel="preload" as="image" href="assets/house.png?v=20261112f" media="(min-width: 601px)" />
+  <link rel="preload" as="image" href="assets/house-mobile.png?v=20261112f" media="(max-width: 600px)" />
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+    body { display: grid; place-items: center; background: #08121b; color: #f4f7f8; font-family: "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif; }
+    .cabinet { position: relative; width: min(100vw, 1280px); aspect-ratio: 16 / 9; overflow: hidden; background: #0e1f2a; box-shadow: 0 24px 80px #000a; }
+    canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+    .topline { position: absolute; inset: 0 0 auto; height: 54px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 56px 0 20px; background: #081923ee; border-bottom: 1px solid #8cd9e633; pointer-events: none; }
+    .title { font-size: 17px; font-weight: 800; white-space: nowrap; letter-spacing: 2px; color: #bceff3; }
+    .status { display: flex; align-items: center; gap: 18px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .status b { color: #91e8db; font-size: 17px; margin-left: 4px; }
+    .status .danger { color: #ff8279; }
+    .help { position: absolute; right: 14px; bottom: 12px; color: #c6e5e8; background: #06202bc9; border: 1px solid #bee7ea30; padding: 6px 9px; font-size: 11px; pointer-events: none; }
+    .pause-button { position: absolute; z-index: 2; top: 10px; right: 12px; width: 32px; height: 32px; padding: 0; border: 1px solid #9ee8ef55; background: #123440; color: #d8ffff; font-size: 17px; line-height: 1; }
+    .pause-button:hover { background: #23606a; color: #fff; }
+    .squad-status { position: absolute; z-index: 1; top: 62px; right: 26px; padding: 5px 9px; background: #082831d9; border: 1px solid #9ee8ef66; font-size: 12px; font-weight: 700; pointer-events: none; }
+    .squad-status b { color: #a2f7dd; font-size: 16px; margin-left: 5px; }
+    .mobile-house, .mobile-weapon { position: absolute; z-index: 1; display: none; pointer-events: none; }
+    .mobile-house img, .mobile-weapon img { display: block; width: 100%; height: 100%; }
+    .mobile-house.hit::after { content: "💥"; position: absolute; left: 40%; top: -18px; font-size: 26px; }
+    .mobile-weapon img { position: absolute; left: 0; }
+    .mobile-weapon .ice-cover { position: absolute; inset: 0; border: 1.5px solid #ddffff; border-radius: 50%; background: #b4f8ff55; }
+    .overlay { position: absolute; z-index: 3; inset: 0; display: grid; place-items: center; background: #05111acc; backdrop-filter: blur(4px); }
+    .overlay[hidden] { display: none; }
+    .panel { width: min(430px, 86%); text-align: center; padding: 34px 30px 30px; border: 1px solid #9ee8ef6b; background: #0a2029ed; box-shadow: 0 16px 60px #0009; }
+    .mark { color: #7ae5e5; font-size: 12px; font-weight: 800; letter-spacing: 3px; }
+    h1 { margin: 10px 0; font-size: 36px; letter-spacing: 2px; }
+    .panel p { color: #bed1d5; font-size: 14px; line-height: 1.8; margin: 0 auto 24px; max-width: 320px; overflow-wrap: anywhere; }
+    button { appearance: none; border: 1px solid #9cf1e9; color: #04191e; background: #9cf1e9; padding: 12px 35px; font: inherit; font-size: 15px; font-weight: 900; cursor: pointer; }
+    button:hover { background: #d4ffff; }
+    @media (max-aspect-ratio: 16/9) { .cabinet { width: 100vw; height: 100dvh; aspect-ratio: auto; box-shadow: none; } }
+    @media (max-width: 600px) {
+      .topline { height: 48px; padding: 0 45px 0 10px; gap: 5px; }
+      .pause-button { top: 8px; right: 7px; }
+      .squad-status { top: 90px; left: 8px; right: auto; }
+      .title { font-size: 11px; letter-spacing: 0; }
+      .status { gap: 7px; font-size: 10px; }
+      .status b { font-size: 12px; margin-left: 2px; }
+      #weaponLabel { display: none; }
+      .help { display: none; }
+      .panel { width: calc(100% - 28px); padding: 26px 20px; }
+      h1 { font-size: 30px; }
+      .panel p { font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="cabinet" aria-label="冰原防线游戏">
+    <canvas id="game" aria-label="触摸拖动士兵左右移动"></canvas>
+    <div id="houseArt" class="mobile-house" aria-hidden="true"><img id="houseImage" alt="" /></div>
+    <div id="weaponArt" class="mobile-weapon" aria-hidden="true"><img id="weaponImage" alt="" /><span class="ice-cover"></span></div>
+    <div class="squad-status">士兵 <b id="squadCount">1</b></div>
+    <div class="topline">
+      <div class="title">ICE FRONT // 01</div>
+      <div class="status"><span>时间 <b id="time">05:00</b></span><span>家园 <b id="health">100</b></span><span id="weaponLabel">制式步枪</span></div>
+    </div>
+    <div class="help">← → 移动　P 暂停</div>
+    <button class="pause-button" id="pauseButton" type="button" title="暂停" aria-label="暂停">⏸</button>
+    <div class="overlay" id="overlay"><section class="panel"><div class="mark">SURVIVAL PROTOCOL</div><h1 id="headline">冰原防线</h1><p id="summary">守住右侧家园。触摸拖动或使用方向键移动，击打左侧冰封武器获取更强火力。</p><button id="action">开始任务</button></section></div>
+    <audio id="backgroundMusic" src="assets/background-music.mp3" loop preload="none"></audio>
+  </main>
+</body>
+</html>
